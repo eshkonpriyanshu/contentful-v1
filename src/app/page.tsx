@@ -1,46 +1,87 @@
 "use client";
-import { createClient } from "contentful";
-import Carousel from "./Carousel";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { homeData } from "./HomeSlice";
 import { useRouter } from "next/navigation";
+import ContentfulApi from "./ContentfulApi";
 
-interface HomeData {
-  fields: {
-    thumbnail: string;
-    title: string;
+interface BlogPost {
+  featuredImage: {
+    url: string;
   };
+  slug: string;
+  sys: {
+    id: string;
+  };
+  thumbnail: {
+    url: string;
+  };
+  title: string;
+  __typename: string;
 }
 
 interface DetailsData {
-  items: HomeData;
+  items: BlogPost;
   index: number;
 }
 
 export default function Home() {
-  const [data, setData] = useState<HomeData[]>([]);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const dispatch = useDispatch();
   const homeDataContentful = useSelector((state: any) => state.homeData.data);
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const getData = async () => {
-      const client = createClient({
-        space: "je5wh4b84iuf",
-        accessToken: "KgAXSp9ZpOxO06Njx1642aUN3eKd6y4kHeg3L9uvcxU",
-      });
-      const res = await client.getEntries({ content_type: "recipe" });
-      setData(res?.items);
-      dispatch(homeData({ data: res?.items }));
+    const fetchBlogPosts = async () => {
+      const query = `
+      query recipeEntryQuery {
+        recipe(id: "5bYCzQX3DpbSrWcbDrnZyZ") {
+          sys {
+            id
+          }
+          title
+          slug
+          thumbnail {
+            url
+          }
+          
+          featuredImage {
+            url
+          }
+          __typename
+          
+        }
+      }
+      `;
+      try {
+        setLoading(true);
+        const response = await ContentfulApi.callContentful(query);
+        console.log(response);
+        const { data }: any = response;
+        const HomeContenfulDataApi = data?.recipe ? [data.recipe] : [];
+        setBlogPosts(data);
+        console.log(data?.recipe);
+        if (response) {
+          dispatch(homeData({ data: HomeContenfulDataApi }));
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error fetching blog posts from Contentful:", error);
+        setLoading(false);
+      }
     };
-    getData();
-  }, []);
 
-  const handleDetailsData = ({ items }: DetailsData) => {
+    fetchBlogPosts();
+  }, [dispatch]);
+
+  const handleDetailsData = ({ items, index }: DetailsData) => {
     router.push("/detailspage");
+    console.log(items, "handleDetailsData");
     dispatch(homeData({ detailsData: items }));
   };
+
+  console.log(homeDataContentful, "homeDataContentful");
 
   return (
     <div>
@@ -52,25 +93,25 @@ export default function Home() {
           marginBottom: "2rem",
         }}
       >
-        {homeDataContentful?.map((items: any, index: number) => {
-          return (
-            <div key={index}>
-              <img
-                style={{ width: "5rem" }}
-                src={items?.fields?.thumbnail?.fields?.file?.url}
-                alt="thumbnail"
-              />
-              <h2>{items?.fields?.title}</h2>
-              <button onClick={() => handleDetailsData({ items, index })}>
-                details
-              </button>
-            </div>
-          );
-        })}
+        {loading
+          ? "loading..."
+          : homeDataContentful?.map((items: BlogPost, index: number) => {
+              return (
+                <div key={index}>
+                  <img
+                    style={{ width: "5rem" }}
+                    src={items?.thumbnail.url}
+                    alt="thumbnail"
+                  />
+                  <h2>{items?.title}</h2>
+                  <button onClick={() => handleDetailsData({ items, index })}>
+                    details
+                  </button>
+                </div>
+              );
+            })}
       </div>
-      <div>
-        <Carousel />
-      </div>
+      <div>{/* Add your Carousel component here */}</div>
     </div>
   );
 }

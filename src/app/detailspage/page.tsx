@@ -18,11 +18,11 @@ const detailspage = () => {
       <div>
         <img
           style={{ width: "5rem" }}
-          src={Data?.fields?.thumbnail?.fields?.file?.url}
+          src={Data?.thumbnail?.url}
           alt="thumbail"
         />
       </div>
-      <div>Title: - {Data?.fields?.title}</div>
+      <div>Title: - {Data?.title}</div>
     </div>
   );
 };
